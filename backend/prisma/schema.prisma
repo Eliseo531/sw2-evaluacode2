@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleName {
+  ADMIN
+  DOCENTE
+  ESTUDIANTE
+}
+
+enum ExamStatus {
+  BORRADOR
+  PUBLICADO
+  EN_EVALUACION
+  FINALIZADO
+}
+
+enum QuestionType {
+  TEORICA
+  CODIGO
+  DIAGRAMA_FLUJO
+}
+
+enum CourseMemberRole {
+  DOCENTE
+  ESTUDIANTE
+}
+
+enum ExamType {
+  TEORICO
+  PROGRAMACION
+  MIXTO
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      RoleName
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coursesTeaching  Course[]          @relation("TeacherCourses")
+  enrollments      Enrollment[]
+  submissions      Submission[]
+  courseMembers    CourseMember[]
+  notifications    Notification[]
+  examActivityLogs ExamActivityLog[]
+}
+
+model Course {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String   @default("SIN-CODIGO")
+  group       String   @default("SIN-GRUPO")
+  description String?
+  teacherId   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher     User           @relation("TeacherCourses", fields: [teacherId], references: [id])
+  enrollments Enrollment[]
+  exams       Exam[]
+  members     CourseMember[]
+}
+
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Exam {
+  id              Int        @id @default(autoincrement())
+  title           String
+  description     String?
+  status          ExamStatus @default(BORRADOR)
+  type            ExamType   @default(TEORICO)
+  examDate        DateTime?
+  examTime        String?
+  durationMinutes Int?
+  courseId        Int
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  course       Course            @relation(fields: [courseId], references: [id])
+  questions    Question[]
+  submissions  Submission[]
+  activityLogs ExamActivityLog[]
+}
+
+model Question {
+  id             Int          @id @default(autoincrement())
+  examId         Int
+  type           QuestionType
+  statement      String
+  expectedAnswer String?
+  score          Float
+  rubric         String?
+  createdAt      DateTime     @default(now())
+
+  exam    Exam     @relation(fields: [examId], references: [id])
+  answers Answer[]
+}
+
+model Submission {
+  id          Int      @id @default(autoincrement())
+  examId      Int
+  studentId   Int
+  submittedAt DateTime @default(now())
+  finalScore  Float?
+  aiScore     Float?
+  status      String   @default("PENDIENTE")
+
+  exam       Exam        @relation(fields: [examId], references: [id])
+  student    User        @relation(fields: [studentId], references: [id])
+  answers    Answer[]
+  correction Correction?
+}
+
+model Answer {
+  id           Int     @id @default(autoincrement())
+  submissionId Int
+  questionId   Int
+  content      String
+  fileUrl      String?
+  aiScore      Float?
+  finalScore   Float?
+  feedback     String?
+
+  submission Submission @relation(fields: [submissionId], references: [id])
+  question   Question   @relation(fields: [questionId], references: [id])
+}
+
+model Correction {
+  id                   Int      @id @default(autoincrement())
+  submissionId         Int      @unique
+  aiGeneratedFeedback  String?
+  teacherObservation   String?
+  teacherAdjustedScore Float?
+  correctionJson       Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id])
+}
+
+model GradeChangeHistory {
+  id           Int      @id @default(autoincrement())
+  answerId     Int?
+  submissionId Int?
+  oldScore     Float?
+  newScore     Float
+  reason       String
+  changedById  Int
+  changedAt    DateTime @default(now())
+}
+
+model Notification {
+  id     Int @id @default(autoincrement())
+  userId Int
+
+  title   String
+  message String
+  type    String
+
+  link String?
+
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CourseMember {
+  id        Int              @id @default(autoincrement())
+  courseId  Int
+  userId    Int
+  role      CourseMemberRole
+  createdAt DateTime         @default(now())
+
+  course Course @relation(fields: [courseId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([courseId, userId])
+}
+
+model ExamActivityLog {
+  id        Int      @id @default(autoincrement())
+  examId    Int
+  studentId Int
+  type      String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
