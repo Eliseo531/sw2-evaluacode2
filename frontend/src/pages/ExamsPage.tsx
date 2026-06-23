@@ -907,7 +907,14 @@ function ExamsPage() {
 
                     {exam.examDate && (
                       <span className="bg-green-100 text-green-700 px-4 py-2 rounded-xl text-sm">
-                        {new Date(exam.examDate).toLocaleDateString()} • Inicio
+                        {exam.examDate
+                          ? exam.examDate
+                              .split("T")[0]
+                              .split("-")
+                              .reverse()
+                              .join("/")
+                          : "Sin fecha"}{" "}
+                        • Inicio
                       </span>
                     )}
 

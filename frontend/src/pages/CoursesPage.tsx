@@ -926,6 +926,26 @@ function CoursesPage() {
     }
   }
 
+  async function handleRemoveMember(memberId: number) {
+    if (!selectedCourse) return;
+
+    if (!window.confirm("¿Seguro que deseas quitar este participante?")) return;
+
+    try {
+      setError("");
+      setSuccess("");
+
+      await apiRequest(`/courses/${selectedCourse.id}/members/${memberId}`, {
+        method: "DELETE",
+      });
+
+      setSuccess("Participante eliminado correctamente");
+      await loadMembers(selectedCourse.id);
+    } catch (error: any) {
+      setError(error.message || "Error al eliminar participante");
+    }
+  }
+
   const trendData =
     courseReport?.studentPerformance
       ?.reduce((acc: any[], item: any) => {
@@ -2155,7 +2175,13 @@ function CoursesPage() {
 
           {!isStudent && (
             <button
-              onClick={() => setActiveTab("members")}
+              onClick={() => {
+                setActiveTab("members");
+
+                if (selectedCourse) {
+                  loadMembers(selectedCourse.id);
+                }
+              }}
               className={`px-5 py-3 rounded-xl text-sm font-medium ${
                 activeTab === "members"
                   ? "bg-blue-600 text-white"
@@ -2476,114 +2502,132 @@ function CoursesPage() {
         )}
 
         {activeTab === "members" && !isStudent && (
-          <>
+          <div className="space-y-6">
             {isAdmin && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border">
                 <h3 className="text-2xl font-bold mb-6">
                   Agregar participante
                 </h3>
 
-                {isAdmin && (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border">
-                    <form
-                      onSubmit={handleAddMember}
-                      className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                <form
+                  onSubmit={handleAddMember}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                >
+                  <div>
+                    <label className="text-sm font-medium">
+                      Buscar usuario
+                    </label>
+
+                    <input
+                      className="w-full mt-1 px-4 py-3 border rounded-xl"
+                      placeholder={
+                        memberRole === "DOCENTE"
+                          ? "Buscar docente por nombre o correo"
+                          : "Buscar estudiante por nombre o correo"
+                      }
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        setSelectedUserId("");
+                      }}
+                    />
+
+                    <select
+                      className="w-full mt-3 px-4 py-3 border rounded-xl"
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
                     >
-                      <div>
-                        <label className="text-sm font-medium">
-                          Buscar usuario
-                        </label>
+                      <option value="">Seleccionar usuario</option>
 
-                        <input
-                          className="w-full mt-1 px-4 py-3 border rounded-xl"
-                          placeholder={
-                            memberRole === "DOCENTE"
-                              ? "Buscar docente por nombre o correo"
-                              : "Buscar estudiante por nombre o correo"
-                          }
-                          value={userSearch}
-                          onChange={(e) => {
-                            setUserSearch(e.target.value);
-                            setSelectedUserId("");
-                          }}
-                        />
+                      {filteredUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} - {user.email} ({user.role})
+                        </option>
+                      ))}
+                    </select>
 
-                        <select
-                          className="w-full mt-3 px-4 py-3 border rounded-xl"
-                          value={selectedUserId}
-                          onChange={(e) => setSelectedUserId(e.target.value)}
-                        >
-                          <option value="">Seleccionar usuario</option>
-
-                          {filteredUsers.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.name} - {user.email} ({user.role})
-                            </option>
-                          ))}
-                        </select>
-
-                        {filteredUsers.length === 0 && (
-                          <p className="text-xs text-slate-500 mt-2">
-                            No se encontraron usuarios disponibles.
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium">
-                          Rol en la materia
-                        </label>
-                        <select
-                          className="w-full mt-1 px-4 py-3 border rounded-xl"
-                          value={memberRole}
-                          onChange={(e) => {
-                            setMemberRole(
-                              e.target.value as "DOCENTE" | "ESTUDIANTE",
-                            );
-                            setSelectedUserId("");
-                            setUserSearch("");
-                          }}
-                        >
-                          <option value="ESTUDIANTE">Estudiante</option>
-                          <option value="DOCENTE">Docente</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-end">
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl">
-                          Agregar
-                        </button>
-                      </div>
-                    </form>
+                    {filteredUsers.length === 0 && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        No se encontraron usuarios disponibles.
+                      </p>
+                    )}
                   </div>
-                )}
+
+                  <div>
+                    <label className="text-sm font-medium">
+                      Rol en la materia
+                    </label>
+
+                    <select
+                      className="w-full mt-1 px-4 py-3 border rounded-xl"
+                      value={memberRole}
+                      onChange={(e) => {
+                        setMemberRole(
+                          e.target.value as "DOCENTE" | "ESTUDIANTE",
+                        );
+                        setSelectedUserId("");
+                        setUserSearch("");
+                      }}
+                    >
+                      <option value="ESTUDIANTE">Estudiante</option>
+                      <option value="DOCENTE">Docente</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl">
+                      Agregar
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border">
-              <h3 className="text-2xl font-bold mb-6">Tendencia del curso</h3>
+              <h3 className="text-2xl font-bold mb-6">
+                Participantes de la materia
+              </h3>
 
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={trendData}>
-                  <XAxis dataKey="examen" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="promedio"
-                    stroke="#2563eb"
-                    strokeWidth={3}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {members.length > 0 ? (
+                <div className="space-y-4">
+                  {members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="border rounded-xl p-5 flex items-center justify-between"
+                    >
+                      <div>
+                        <h4 className="font-bold">{member.user.name}</h4>
 
-              <p className="text-slate-500 text-sm mt-4">
-                Evolución del promedio general del curso por examen.
-              </p>
+                        <p className="text-sm text-slate-500">
+                          {member.user.email}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="bg-slate-100 px-3 py-2 rounded-xl text-xs">
+                          {member.role}
+                        </span>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleRemoveMember(member.id)}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-xl text-sm"
+                          >
+                            Quitar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-dashed rounded-2xl p-8 text-center text-slate-500">
+                  No hay participantes registrados.
+                </div>
+              )}
             </div>
-          </>
+          </div>
         )}
-
         {activeTab === "stats" && (
           <div className="space-y-6">
             {reportView === "class" && classReport ? (

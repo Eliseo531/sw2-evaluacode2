@@ -14,11 +14,19 @@ function getExamDateRange(
   examTime: string,
   durationMinutes: number,
 ) {
-  const dateOnly = examDate.toISOString().split("T")[0];
-  const startDate = new Date(`${dateOnly}T${examTime}:00`);
+  const year = examDate.getUTCFullYear();
+  const month = String(examDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(examDate.getUTCDate()).padStart(2, "0");
+
+  const dateOnly = `${year}-${month}-${day}`;
+
+  const startDate = new Date(`${dateOnly}T${examTime}:00-04:00`);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
 
-  return { startDate, endDate };
+  return {
+    startDate,
+    endDate,
+  };
 }
 
 router.post(
